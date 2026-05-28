@@ -1,7 +1,10 @@
 service:
   name: service-flagd-ui
+  namespace: aicares
 image:
   repository: 952893849914.dkr.ecr.us-east-1.amazonaws.com/aicares-application/flagd-ui
+  tag: latest
+  pullPolicy: Always
 containerPort: 4000
 resources:
   limits:
@@ -10,7 +13,11 @@ resources:
     memory: "64Mi"
     cpu: "50m"
 env:
-  - name: FLAGD_UI_PORT
+  - name: SECRET_KEY_BASE
+    value: "309f0a09ea573791bb04fb1386358e24c40fe7895c7bab56be2234ed27a32509344c856374884f4e66517481fcb80244cd0bd6c927e4253fd7be445d4cb9af93"
+  - name: PHX_HOST
+    value: "flagd-ui"
+  - name: PORT
     value: "4000"
   - name: FLAGD_HOST
     value: "flagd"
