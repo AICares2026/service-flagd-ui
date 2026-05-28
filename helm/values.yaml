@@ -14,7 +14,7 @@ resources:
     cpu: "50m"
 env:
   - name: SECRET_KEY_BASE
-    value: "309f0a09ea573791bb04fb1386358e24c40fe7895c7bab56be2234ed27a32509344c856374884f4e66517481fcb80244cd0bd6c927e4253fd7be445d4cb9af93"
+    value: "c7d014ca6b7fb171659ad9dba37a5c44c6262adaefe331aa3daa996988e93f42925d041d60ae34cd2867d4eee4c33dbf231c0c7a6911bfc6e438078f554b8622"
   - name: PHX_HOST
     value: "flagd-ui"
   - name: PORT
@@ -23,5 +23,9 @@ env:
     value: "flagd"
   - name: FLAGD_PORT
     value: "8013"
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: "http://otel-collector:4317"
+  - name: OTEL_SERVICE_NAME
+    value: "flagd-ui"
 nodeSelector:
   eks.amazonaws.com/nodegroup: graviton-workers
