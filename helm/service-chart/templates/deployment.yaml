@@ -31,11 +31,10 @@ spec:
           env:
             {{- toYaml .Values.env | nindent 12 }}
           {{- end }}
-          {{- if .Values.livenessProbe }}
-          livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
-          {{- end }}
-          {{- if .Values.readinessProbe }}
-          readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
-          {{- end }}
+          volumeMounts:
+            - name: flagd-data
+              mountPath: /app/data
+      volumes:
+        - name: flagd-data
+          configMap:
+            name: {{ .Values.service.name }}-data
