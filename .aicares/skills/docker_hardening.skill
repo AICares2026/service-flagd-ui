@@ -1,0 +1,45 @@
+You are an autonomous code-maintenance agent. Your task is to harden all Dockerfiles in this repository by applying three specific security improvements. Follow every instruction precisely. Do not ask questions. Do not make changes outside the scope defined here.
+
+---
+
+## SCOPE
+
+Search recursively from the repository root for all files named exactly `Dockerfile` or matching the pattern `Dockerfile.*` (e.g., `Dockerfile.dev`, `Dockerfile.prod`). Also search for files with the `.dockerfile` extension. Process each file found.
+
+Do **not** modify:
+- Files inside `vendor/`, `node_modules/`, `.git/`, or any directory whose name begins with `.`
+- Any file that is not a Dockerfile (do not modify shell scripts, CI configs, compose files, etc.)
+- Comments that are already present — preserve all existing comments unless you are replacing a line they describe
+- `ARG` instructions that define build-time variables unrelated to the base image
+
+---
+
+## CHANGE 1 — Pin base image tags to SHA256 digests
+
+### What to look for
+Any `FROM` instruction whose image reference does **not** already include a `@sha256:` digest. Examples of unpinned references:
+- `FROM ubuntu:22.04`
+- `FROM node:18-alpine`
+- `FROM python:3.11-slim`
+- `FROM scratch` — leave this alone (see exceptions below)
+- `FROM --platform=... image:tag` — platform flag must be preserved
+
+Also handle these real-world cases:
+- Images with no explicit tag (e.g., `FROM nginx`) — treat the implicit tag as `latest` when resolving the digest, and rewrite as `FROM nginx:latest@sha256:<digest>`
+- Images from non-Docker Hub registries (e.g., `FROM gcr.io/distroless/java:11`, `FROM ghcr.io/org/image:tag`, `FROM public.ecr.aws/amazonlinux/amazonlinux:2`) — resolve the digest from the correct registry using `docker manifest inspect` or equivalent registry API calls
+- Images that use only a digest and no tag (e.g., `FROM ubuntu@sha256:abc123`) — these are already pinned; do **not** modify them
+
+### How to fix
+1. Resolve the current digest for the exact tag specified by querying the appropriate registry. Use `docker manifest inspect <image>:<tag>` logic to obtain the `sha256` digest of the manifest list (or image manifest if no manifest list exists). For Docker Hub images without a namespace, use `library` as the namespace (e.g., `ubuntu` → `library/ubuntu`).
+2. Rewrite the `FROM` line to append `@sha256:<digest>` after the tag, keeping the tag for human readability:
+   - `FROM ubuntu:22.04` → `FROM ubuntu:22.04@sha256:<resolved_digest>`
+   - `FROM --platform=linux/amd64 node:18-alpine` → `FROM --platform=linux/amd64 node:18-alpine@sha256:<resolved_digest>`
+   - `FROM nginx` → `FROM nginx:latest@sha256:<resolved_digest>`
+3. If the image reference already contains `@sha256:`, do **not** modify it.
+4. If the image uses a build `ARG` as its source — in whole or in part — (`FROM ${BASE_IMAGE}`, `FROM $BASE_IMAGE`, `FROM ${REGISTRY}/image:${TAG}`) do **not** modify that line — it cannot be safely resolved statically.
+5. If digest resolution fails for any reason (network error, private registry, image not found), do **not** modify that `FROM` line. Instead, add a comment on the line immediately above it: `# WARNING: digest resolution failed for this image — manual pinning required`
+6. Add or update a comment on the line immediately above the `FROM` instruction indicating the date the digest was pinned, in the format: `# Digest pinned on YYYY-MM-DD`. If a `# WARNING:` comment was added per rule 5, place it on the line above the `FROM` and omit the pinned-date comment.
+
+### Exceptions — do not pin
+- `FROM scratch`
+- `FROM` lines that reference a stage defined earlier in the same Dockerfile (multi-stage `FROM builder`, `FROM base`, etc.). Detect these by collecting every name assigned by an `AS` clause anywhere in the same file and checking whether the image
